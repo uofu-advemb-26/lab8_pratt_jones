@@ -62,6 +62,10 @@ project(myproject C CXX ASM)
 # These are some macros from the pico SDK that do some setup.
 pico_sdk_init()
 
+# This sets up the can2040 library (CAN controller implemented with PIO).
+set(CAN_PATH ${CMAKE_CURRENT_LIST_DIR}/lib/can2040)
+include(${CAN_PATH}/can2040.cmake)
+
 # This sets a preprocessor value for use in our code.
 add_compile_definitions(
     configNUMBER_OF_CORES=1
