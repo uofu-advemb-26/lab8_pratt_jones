@@ -32,12 +32,12 @@ static void tx_task(void *params){
     struct can2040_msg msg = {0};
     msg.id = 0x200;
     msg.dlc = 4;
-    int ret = can2040_transmit(&cbus, &msg);
+    int return_value = can2040_transmit(&cbus, &msg);
 
     while (1) {
         can2040_transmit(&cbus, &msg);
         //printf("sent %lu\n", msg.data32[0]);
-        printf("sent %lu, result %d\n", msg.data32[0], ret);
+        printf("sent %lu\n", msg.data32[0]);
         msg.data32[0]++;
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
