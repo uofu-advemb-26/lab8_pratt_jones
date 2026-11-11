@@ -24,7 +24,7 @@ static QueueHandle_t rx_queue;
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
     if (notify == CAN2040_NOTIFY_RX) {
-        xQueueSendFromISR(rx_queue, msg, NULL);
+        xQueueSendToBack(rx_queue, msg, portMAX_DELAY);
     }
 }
 
@@ -32,14 +32,12 @@ static void tx_task(void *params){
     struct can2040_msg msg = {0};
     msg.id = 0x200;
     msg.dlc = 4;
-    int return_value = can2040_transmit(&cbus, &msg);
 
     while (1) {
-        can2040_transmit(&cbus, &msg);
-        //printf("sent %lu\n", msg.data32[0]);
-        printf("sent %lu\n", msg.data32[0]);
-        msg.data32[0]++;
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        int return_value = can2040_transmit(&cbus, &msg);
+        printf("sent %lu, return %d\n", msg.data32[1], return_value);
+        msg.data32[1]++;
+        vTaskDelay(pdMS_TO_TICKS(3000));
     }
 }
 
@@ -49,7 +47,7 @@ static void rx_task(void *params)
     
     while (1) {
         xQueueReceive(rx_queue, &msg, portMAX_DELAY);
-        printf("received %lu\n", msg.data32[0]);
+        printf("received %lu\n", msg);
     }
 }
 
