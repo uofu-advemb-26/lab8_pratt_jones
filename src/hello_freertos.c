@@ -35,8 +35,8 @@ static void tx_task(void *params){
 
     while (1) {
         int return_value = can2040_transmit(&cbus, &msg);
-        printf("sent %lu, return %d\n", msg.data32[1], return_value);
-        msg.data32[1]++;
+        printf("sent %lu, return %d\n", msg.data32[0], return_value);
+        msg.data32[0]++;
         vTaskDelay(pdMS_TO_TICKS(3000));
     }
 }
@@ -47,7 +47,7 @@ static void rx_task(void *params)
     
     while (1) {
         xQueueReceive(rx_queue, &msg, portMAX_DELAY);
-        printf("received %lu\n", msg);
+        printf("received %lu\n", msg.data[0]);
     }
 }
 
