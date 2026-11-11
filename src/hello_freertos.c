@@ -3,24 +3,54 @@
  */
 
 #include <stdio.h>
-
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
-#include <can2040.h>
-#include <hardware/regs/intctrl.h>
-#include <stdio.h>
-#include <pico/stdlib.h>
+#include "pico/stdlib.h"
+#include "hardware/irq.h"
+#include "can2040.h"
 
+
+
+#define TRANSMITTER 1 //1 to send messages annd 0 to receive messages
 
 #define MAIN_TASK_PRIORITY   (tskIDLE_PRIORITY + 1UL)
 #define MAIN_TASK_STACK_SIZE configMINIMAL_STACK_SIZE
 
 static struct can2040 cbus;
+static QueueHandle_t rx_queue;
 
+// Receive
 static void can2040_cb(struct can2040 *cd, uint32_t notify, struct can2040_msg *msg)
 {
-    // Put your code here....
+    if (notify == CAN2040_NOTIFY_RX) {
+        xQueueSendFromISR(rx_queue, msg, NULL);
+    }
+}
+
+static void tx_task(void *params){
+    struct can2040_msg msg = {0};
+    msg.id = 0x200;
+    msg.dlc = 4;
+    int ret = can2040_transmit(&cbus, &msg);
+
+    while (1) {
+        can2040_transmit(&cbus, &msg);
+        //printf("sent %lu\n", msg.data32[0]);
+        printf("sent %lu, result %d\n", msg.data32[0], ret);
+        msg.data32[0]++;
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
+
+static void rx_task(void *params)
+{
+    struct can2040_msg msg;
+    
+    while (1) {
+        xQueueReceive(rx_queue, &msg, portMAX_DELAY);
+        printf("received %lu\n", msg.data32[0]);
+    }
 }
 
 static void PIOx_IRQHandler(void)
@@ -46,21 +76,18 @@ void canbus_setup(void)
     // Start canbus
     can2040_start(&cbus, sys_clock, bitrate, gpio_rx, gpio_tx);
 }
-static void main_task(void *params)
-{
-    (void)params;
-    int count = 0;
-    while (1) {
-        printf(" %d\n", count++);
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-}
 
-int main(void)
-{
+int main(void){
     stdio_init_all();
-    xTaskCreate(main_task, "MainThread", MAIN_TASK_STACK_SIZE, NULL,
-                MAIN_TASK_PRIORITY, NULL);
+    rx_queue = xQueueCreate(16, sizeof(struct can2040_msg));
+    canbus_setup();
+
+    if (TRANSMITTER) {
+        xTaskCreate(tx_task, "TX", 512, NULL, 1, NULL);
+    } else {
+        xTaskCreate(rx_task, "RX", 512, NULL, 1, NULL);
+    }
+
     vTaskStartScheduler();
     return 0;
 }
