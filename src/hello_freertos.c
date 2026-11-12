@@ -12,8 +12,6 @@
 
 
 
-#define TRANSMITTER 1 //1 to send messages annd 0 to receive messages
-
 #define MAIN_TASK_PRIORITY   (tskIDLE_PRIORITY + 1UL)
 #define MAIN_TASK_STACK_SIZE configMINIMAL_STACK_SIZE
 
@@ -37,7 +35,7 @@ static void tx_task(void *params){
         int return_value = can2040_transmit(&cbus, &msg);
         printf("sent %lu, return %d\n", msg.data32[0], return_value);
         msg.data32[0]++;
-        vTaskDelay(pdMS_TO_TICKS(3000));
+        vTaskDelay(pdMS_TO_TICKS(0.5));
     }
 }
 
@@ -80,11 +78,8 @@ int main(void){
     rx_queue = xQueueCreate(16, sizeof(struct can2040_msg));
     canbus_setup();
 
-    if (TRANSMITTER) {
-        xTaskCreate(tx_task, "TX", 512, NULL, 1, NULL);
-    } else {
-        xTaskCreate(rx_task, "RX", 512, NULL, 1, NULL);
-    }
+    xTaskCreate(tx_task, "TX", 512, NULL, 1, NULL);
+    xTaskCreate(rx_task, "RX", 512, NULL, 1, NULL);
 
     vTaskStartScheduler();
     return 0;
